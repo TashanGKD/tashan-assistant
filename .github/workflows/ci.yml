@@ -15,4 +15,4 @@ jobs:
           cache: pip
       - run: pip install -r requirements-dev.txt
       - run: python -m compileall -q app
-      - run: pytest -q
+      - run: python -m pytest -q
