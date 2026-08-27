@@ -24,6 +24,7 @@
 APP_BIND_IP=127.0.0.1
 APP_PORT=18082
 PYTHON_BASE_IMAGE=docker.m.daocloud.io/library/python:3.12-slim
+PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 DEEPSEEK_API_KEY=
 FEISHU_APP_ID=
 FEISHU_APP_SECRET=

@@ -1,12 +1,14 @@
 ARG PYTHON_BASE_IMAGE=docker.m.daocloud.io/library/python:3.12-slim
 FROM ${PYTHON_BASE_IMAGE}
 
+ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+
 ENV PYTHONDONTWRITEBYTECODE=1     PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --index-url "${PIP_INDEX_URL}" -r requirements.txt
 
 COPY . .
 
