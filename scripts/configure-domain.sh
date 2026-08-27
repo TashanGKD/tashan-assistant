@@ -4,6 +4,7 @@ set -Eeuo pipefail
 domain="${1:?Usage: configure-domain.sh DOMAIN UPSTREAM_PORT [EMAIL]}"
 upstream_port="${2:?Usage: configure-domain.sh DOMAIN UPSTREAM_PORT [EMAIL]}"
 email="${3:-}"
+domain_mode="${DOMAIN_MODE:-proxy}"
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 vhost_dir="${NGINX_VHOST_DIR:-/www/server/panel/vhost/nginx}"
 nginx_bin="${NGINX_BIN:-/www/server/nginx/sbin/nginx}"
@@ -24,6 +25,11 @@ expected_public_ip="${EXPECTED_PUBLIC_IP:-}"
 
 [[ "$upstream_port" =~ ^[0-9]+$ ]] || {
   echo "Invalid upstream port: ${upstream_port}" >&2
+  exit 1
+}
+
+[[ "$domain_mode" == "proxy" || "$domain_mode" == "maintenance" ]] || {
+  echo "DOMAIN_MODE must be proxy or maintenance." >&2
   exit 1
 }
 
@@ -80,10 +86,19 @@ else
 fi
 certbot "${certbot_args[@]}"
 
-render_template "$repo_dir/deploy/nginx/askpanshi.https.conf.template" "$https_config"
+if [[ "$domain_mode" == "maintenance" ]]; then
+  final_template="$repo_dir/deploy/nginx/askpanshi.maintenance.conf.template"
+else
+  final_template="$repo_dir/deploy/nginx/askpanshi.https.conf.template"
+fi
+render_template "$final_template" "$https_config"
 install -m 0644 "$https_config" "$vhost_path"
 "$nginx_bin" -t
 "$nginx_bin" -s reload
 
 trap - ERR
-echo "Configured https://${domain} -> http://127.0.0.1:${upstream_port}."
+if [[ "$domain_mode" == "maintenance" ]]; then
+  echo "Configured https://${domain} in maintenance mode."
+else
+  echo "Configured https://${domain} -> http://127.0.0.1:${upstream_port}."
+fi

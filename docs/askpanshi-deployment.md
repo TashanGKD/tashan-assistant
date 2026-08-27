@@ -11,6 +11,7 @@
 - [x] 增加 GitHub Actions 部署 workflow，部署前先执行 Python 编译和测试。
 - [x] 增加服务器端 `systemd` 定时监控方案，每两分钟检查一次上游 `main`。
 - [x] 增加 Nginx、HTTPS 和 Certbot 配置脚本。
+- [x] 为凭证未就绪阶段增加独立维护态 vhost，避免命中服务器默认站点和错误证书。
 - [ ] 在服务器写入真实的 DeepSeek、飞书和管理员配置。
 - [ ] 首次启动容器，签发证书并启用 HTTPS vhost。
 - [ ] 验证首页、健康接口、真实答疑、飞书 Case 写入和失败回滚。
@@ -61,3 +62,14 @@ workflow 使用仓库只读地址拉取代码。密钥只用于连接部署服�
 systemctl status tashan-assistant-deploy.timer
 journalctl -u tashan-assistant-deploy.service -n 100 --no-pager
 ```
+
+## 维护态域名
+
+外部服务凭证未就绪时，只启用维护态 vhost：
+
+```bash
+EXPECTED_PUBLIC_IP=8.147.58.40 DOMAIN_MODE=maintenance \
+  scripts/configure-domain.sh askpanshi.tashan.ac.cn 18082
+```
+
+该模式签发正确的 HTTPS 证书，HTTP 只跳转到同域 HTTPS，HTTPS 返回 `503`。生产容器通过完整验收后，再以默认 `proxy` 模式运行同一个脚本。
