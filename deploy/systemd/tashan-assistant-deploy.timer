@@ -1,0 +1,11 @@
+[Unit]
+Description=Monitor tashan-assistant main branch
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+RandomizedDelaySec=20s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

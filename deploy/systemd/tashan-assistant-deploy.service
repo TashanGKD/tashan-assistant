@@ -1,0 +1,12 @@
+[Unit]
+Description=Check and deploy tashan-assistant from GitHub
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/var/www/github-actions/repos/tashan-assistant
+Environment=DEPLOY_REPO_DIR=/var/www/github-actions/repos/tashan-assistant
+Environment=DEPLOY_BRANCH=main
+ExecStart=/var/www/github-actions/repos/tashan-assistant/scripts/watch-and-deploy.sh

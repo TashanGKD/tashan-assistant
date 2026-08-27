@@ -1,0 +1,66 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: python -m compileall -q app
+      - run: python -m pytest -q
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy to world.tashan.chat
+        uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0
+        env:
+          REPO: ${{ github.repository }}
+          TARGET_SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          envs: REPO,TARGET_SHA
+          timeout: 30m
+          command_timeout: 30m
+          script_stop: true
+          script: |
+            set -Eeuo pipefail
+            base_dir="${{ secrets.DEPLOY_PATH || '/var/www/github-actions/repos' }}"
+            repo_name="${REPO##*/}"
+            repo_dir="${base_dir}/${repo_name}"
+            repo_url="https://github.com/${REPO}.git"
+
+            if [ ! -d "${repo_dir}/.git" ]; then
+              mkdir -p "$base_dir"
+              git clone "$repo_url" "$repo_dir"
+            fi
+
+            cd "$repo_dir"
+            git remote set-url origin "$repo_url"
+            git fetch --prune origin main
+            previous_sha="$(sed -n '1p' .deploy/current-sha 2>/dev/null || true)"
+            git checkout --detach "$TARGET_SHA"
+            chmod +x scripts/deploy.sh
+            scripts/deploy.sh "$previous_sha" "$TARGET_SHA"

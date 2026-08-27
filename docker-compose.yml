@@ -5,6 +5,6 @@ services:
     env_file:
       - .env
     ports:
-      - "8000:8000"
+      - "${APP_BIND_IP:-127.0.0.1}:${APP_PORT:-8000}:8000"
     volumes:
       - ./data:/app/data
