@@ -90,6 +90,20 @@ jobs:
               fi
             done
 
+            configured_admin="$(sed -n 's/^ADMIN_TOKEN=//p' "$env_file" | tail -n 1)"
+            if [[ "$configured_admin" == *"replace-with"* \
+              || "$configured_admin" == *"your_key"* \
+              || "$configured_admin" == "change-me-before-production" ]]; then
+              existing_admin="$(sed -n 's/^ADMIN_TOKEN=//p' .env 2>/dev/null | tail -n 1 || true)"
+              if [ -z "$existing_admin" ] \
+                || [[ "$existing_admin" == *"replace-with"* ]] \
+                || [[ "$existing_admin" == *"your_key"* ]] \
+                || [ "$existing_admin" = "change-me-before-production" ]; then
+                existing_admin="$(openssl rand -hex 32)"
+              fi
+              sed -i "s/^ADMIN_TOKEN=.*/ADMIN_TOKEN=${existing_admin}/" "$env_file"
+            fi
+
             chmod 600 "$env_file"
             mv "$env_file" .env
             trap - EXIT
