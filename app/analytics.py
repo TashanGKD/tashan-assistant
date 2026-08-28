@@ -1,7 +1,6 @@
 from collections import Counter
 
-from .config import settings
-from .deepseek import DeepSeekClient
+from .llm import LLMClient
 from .prompts import REPORT_PROMPT
 
 def truthy(value) -> bool:
@@ -58,25 +57,10 @@ async def generate_report(lesson_id: int, cases: list[dict], stats: dict) -> str
         )
 
     prompt = f"课次：{lesson_id}\n程序统计：{stats}\nCase摘要：{compact}"
-    client = DeepSeekClient()
-
-    if not client.enabled:
-        top = list(stats["category_counts"].items())[:5]
-        lines = "\n".join(f"- {name}: {count} 个" for name, count in top) or "- 暂无有效数据"
-        return (
-            f"# 第 {lesson_id} 课教学诊断（本地开发模式）\n\n"
-            f"## 高频问题\n{lines}\n\n"
-            f"## 关键指标\n"
-            f"- Case：{stats['total_cases']}\n"
-            f"- 确认解决率：{stats['resolution_rate']}%\n"
-            f"- AI 回答被纠错：{stats['flagged_answers']}\n\n"
-            "## 建议\n"
-            "优先复核被纠错回答，并将重复出现且已被学生确认有效的解决方案沉淀为 FAQ。"
-        )
+    client = LLMClient()
 
     return await client.respond(
         REPORT_PROMPT,
         prompt,
-        effort=settings.analyst_reasoning_effort,
         max_output_tokens=2600,
     )

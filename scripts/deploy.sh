@@ -39,7 +39,9 @@ validate_production_env() {
     return 1
   }
 
-  require_env_value DEEPSEEK_API_KEY
+  require_env_value LLM_API_URL
+  require_env_value LLM_API_KEY
+  require_env_value LLM_MODEL
   require_env_value ADMIN_TOKEN
 
   if [[ "$require_feishu" == "1" ]]; then
@@ -61,7 +63,7 @@ wait_for_application() {
 
   for _ in $(seq 1 30); do
     payload="$(curl --silent --show-error --fail --max-time 5 "$health_url" 2>/dev/null || true)"
-    if [[ "$payload" == *'"ok":true'* && "$payload" == *'"deepseek":true'* ]]; then
+    if [[ "$payload" == *'"ok":true'* && "$payload" == *'"llm":true'* ]]; then
       if [[ "$require_feishu" != "1" || "$payload" == *'"feishu":true'* ]]; then
         echo "Application health check passed at ${health_url}."
         return 0

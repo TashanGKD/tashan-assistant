@@ -14,11 +14,9 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     course_version: str = "2026-fall-v1"
 
-    deepseek_api_key: str = ""
-    deepseek_base_url: str = "https://api.deepseek.com"
-    deepseek_model: str = "deepseek-v4-flash"
-    tutor_reasoning_effort: str = "none"
-    analyst_reasoning_effort: str = "high"
+    llm_api_url: str = ""
+    llm_api_key: str = ""
+    llm_model: str = ""
 
     feishu_app_id: str = ""
     feishu_app_secret: str = ""

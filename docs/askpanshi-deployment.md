@@ -12,7 +12,7 @@
 - [x] 增加服务器端 `systemd` 定时监控方案，每两分钟检查一次上游 `main`。
 - [x] 增加 Nginx、HTTPS 和 Certbot 配置脚本。
 - [x] 为凭证未就绪阶段增加独立维护态 vhost，避免命中服务器默认站点和错误证书。
-- [ ] 在服务器写入真实的 DeepSeek、飞书和管理员配置。
+- [ ] 在服务器写入真实的大模型、飞书和管理员配置。
 - [ ] 首次启动容器，签发证书并启用 HTTPS vhost。
 - [ ] 验证首页、健康接口、真实答疑、飞书 Case 写入和失败回滚。
 - [ ] 将变更合并到上游 `main`，并配置 Actions 所需的 SSH secrets。
@@ -26,7 +26,9 @@ APP_BIND_IP=127.0.0.1
 APP_PORT=18082
 PYTHON_BASE_IMAGE=docker.m.daocloud.io/library/python:3.12-slim
 PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
-DEEPSEEK_API_KEY=
+LLM_API_URL=
+LLM_API_KEY=
+LLM_MODEL=
 FEISHU_APP_ID=
 FEISHU_APP_SECRET=
 FEISHU_APP_TOKEN=
@@ -36,7 +38,7 @@ ADMIN_TOKEN=
 ALLOWED_ORIGINS=https://askpanshi.tashan.ac.cn
 ```
 
-`.env` 只保存在服务器，不进入 Git。缺少 DeepSeek 或飞书配置时，部署脚本会退出，不会把应用的本地模拟模式当作生产服务。
+`.env` 只保存在服务器，不进入 Git。缺少大模型或飞书配置时，部署脚本会退出，不会以模拟答复代替真实服务。
 
 ## GitHub Actions secrets
 

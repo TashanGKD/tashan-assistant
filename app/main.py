@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .analytics import compute_stats, generate_report
 from .config import BASE_DIR, settings
-from .deepseek import DeepSeekClient
+from .llm import LLMClient
 from .feishu import CaseStore
 from .models import ChatRequest, ChatResponse, FeedbackRequest
 from .prompts import EXTRACTOR_PROMPT, tutor_instructions
@@ -28,7 +28,7 @@ if origins:
         allow_headers=["Content-Type", "X-Admin-Token"],
     )
 
-deepseek = DeepSeekClient()
+llm = LLMClient()
 store = CaseStore()
 
 lessons = json.loads(
@@ -60,7 +60,7 @@ def transcript_from(history, user_message: str, assistant_answer: str) -> str:
 
 async def extract_and_update(record_id: str, transcript: str) -> None:
     try:
-        data = await deepseek.extract_case(transcript, EXTRACTOR_PROMPT)
+        data = await llm.extract_case(transcript, EXTRACTOR_PROMPT)
         fields = {
             "一级分类": data.get("category", "未分类"),
             "二级分类": data.get("subcategory", ""),
@@ -85,8 +85,8 @@ async def health():
     return {
         "ok": True,
         "version": settings.app_version,
-        "model": settings.deepseek_model,
-        "deepseek": deepseek.enabled,
+        "model": settings.llm_model,
+        "llm": llm.enabled,
         "feishu": store.enabled,
     }
 
@@ -96,6 +96,9 @@ async def get_lessons():
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest, background_tasks: BackgroundTasks):
+    if not llm.enabled:
+        raise HTTPException(status_code=503, detail="LLM is not configured")
+
     current_case_id = req.case_id or case_id()
     record_id = req.record_id
     sanitized_message = sanitize_text(req.message)
@@ -131,13 +134,12 @@ async def chat(req: ChatRequest, background_tasks: BackgroundTasks):
         ),
     }
 
-    answer = await deepseek.respond(
+    answer = await llm.respond(
         tutor_instructions(
             req.lesson_id,
             state_hints.get(req.interaction_type, state_hints["normal"]),
         ),
         build_input(req.history, req.message),
-        effort=settings.tutor_reasoning_effort,
         max_output_tokens=1600,
     )
 
@@ -218,6 +220,8 @@ async def admin_report(
     x_admin_token: str | None = Header(default=None),
 ):
     require_admin(x_admin_token)
+    if not llm.enabled:
+        raise HTTPException(status_code=503, detail="LLM is not configured")
     cases = await store.list_cases(lesson_id)
     stats = compute_stats(cases)
     report = await generate_report(lesson_id, cases, stats)

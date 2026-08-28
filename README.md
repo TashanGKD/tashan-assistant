@@ -2,7 +2,7 @@
 
 面向中国科学院大学 AI 实训课程的文本答疑与教学反馈闭环系统。
 
-学生在网页中选择课程，直接描述疑问、粘贴代码或报错；系统用 DeepSeek V4 Flash 进行多轮答疑，并把问题自动结构化为 Case 写入飞书多维表格。课后可生成课程诊断报告，用于发现高频问题、未解决问题、AI 错误回答和课程改进点。
+学生在网页中选择课程，直接描述疑问、粘贴代码或报错；系统通过环境变量配置的 OpenAI 兼容大模型进行多轮答疑，并把问题自动结构化为 Case 写入飞书多维表格。课后可生成课程诊断报告，用于发现高频问题、未解决问题、AI 错误回答和课程改进点。
 
 ## 核心流程
 
@@ -27,7 +27,7 @@
 ## 已实现
 
 - 9 节课程选择与独立课程上下文
-- DeepSeek V4 Flash 文本答疑
+- 可配置的 OpenAI Chat Completions 兼容模型
 - 多轮会话与刷新恢复
 - `解决了 / 还没解决 / 回答有问题`
 - 一个问题一个 Case；新问题不会污染旧 Case
@@ -37,7 +37,7 @@
 - 飞书多维表格写入与更新
 - 课后课程统计与诊断报告
 - 常见 API Key / Token / Password 自动脱敏
-- 本地开发模式：没有 DeepSeek / 飞书凭证也能跑
+- 缺少大模型配置时明确返回不可用，不生成模拟答复
 - Docker 部署
 - GitHub Actions CI
 
@@ -49,18 +49,16 @@ frontend/index.html
         ▼
     FastAPI
      │   │
-     │   ├── DeepSeek Responses API：学生答疑
-     │   ├── DeepSeek JSON Output：Case 结构化
-     │   └── DeepSeek：课后课程诊断
+     │   ├── Chat Completions API：学生答疑
+     │   ├── JSON Output：Case 结构化
+     │   └── 可配置大模型：课后课程诊断
      │
      └── Feishu Bitable
           ├── Cases
           └── LessonReports
 ```
 
-DeepSeek Responses API 当前支持 `deepseek-v4-flash`：
-- https://api-docs.deepseek.com/api/create-response/
-- https://api-docs.deepseek.com/guides/responses_api/
+模型服务需要提供 OpenAI 兼容的 Chat Completions 接口。调用地址、API Key 和模型名称全部由 `.env` 配置。
 
 ## 快速运行
 
@@ -86,31 +84,21 @@ uvicorn app.main:app --reload
 http://127.0.0.1:8000
 ```
 
-如果 `.env` 没有填写 DeepSeek 和飞书凭证，系统自动进入本地开发模式：
-
-- AI 使用内置模拟回答
-- Case 写入 `data/cases.jsonl`
-- 报告写入 `data/reports.jsonl`
+如果 `.env` 没有填写大模型配置，网页和健康接口仍可启动，但答疑与课程报告接口返回 `503`，不会生成模拟回答。飞书未配置时，Case 和报告写入本地 `data/` 目录。
 
 也可以直接双击 `frontend/index.html` 查看纯前端演示。
 
-## DeepSeek 配置
+## 大模型配置
 
 在 `.env` 中填写：
 
 ```env
-DEEPSEEK_API_KEY=your_key
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-v4-flash
-
-# 学生答疑优先速度
-TUTOR_REASONING_EFFORT=none
-
-# 课后分析优先质量
-ANALYST_REASONING_EFFORT=high
+LLM_API_URL=https://api.deepseek.com/chat/completions
+LLM_API_KEY=your_key
+LLM_MODEL=deepseek-v4-flash
 ```
 
-DeepSeek API 是无状态的，多轮历史由本项目后端自行维护并回传。
+`LLM_API_URL` 必须填写完整的 Chat Completions 调用地址。模型 API 是无状态的，多轮历史由本项目后端维护并回传。
 
 ## 飞书配置
 
@@ -282,7 +270,7 @@ tashan-assistant/
 ├── app/
 │   ├── analytics.py
 │   ├── config.py
-│   ├── deepseek.py
+│   ├── llm.py
 │   ├── feishu.py
 │   ├── local_store.py
 │   ├── main.py
@@ -307,7 +295,7 @@ tashan-assistant/
 ## 上线前检查
 
 - 不要提交 `.env`
-- 不要把 DeepSeek Key、飞书 Secret 写进前端
+- 不要把大模型 API Key、飞书 Secret 写进前端
 - `ADMIN_TOKEN` 必须替换
 - 若前后端跨域部署，设置 `ALLOWED_ORIGINS`
 - 通过 HTTPS 对外提供服务
