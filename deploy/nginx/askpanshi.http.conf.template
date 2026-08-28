@@ -1,0 +1,18 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+
+    access_log /www/wwwlogs/__DOMAIN__.log;
+    error_log /www/wwwlogs/__DOMAIN__.error.log;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /www/wwwroot/__DOMAIN__;
+        default_type "text/plain";
+        allow all;
+    }
+
+    location / {
+        return 503;
+    }
+}

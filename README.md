@@ -255,6 +255,12 @@ docker compose up -d --build
 http://localhost:8000
 ```
 
+生产部署、GitHub Actions、服务器定时监控和域名配置见：
+
+```text
+docs/askpanshi-deployment.md
+```
+
 ## 测试
 
 ```bash
