@@ -31,20 +31,34 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Prepare production environment
+        shell: bash
+        env:
+          DEPLOY_ENV: ${{ secrets.DEPLOY_ENV }}
+        run: |
+          set -Eeuo pipefail
+          if [ -z "$DEPLOY_ENV" ]; then
+            echo "DEPLOY_ENV secret is empty." >&2
+            exit 1
+          fi
+          encoded="$(printf '%s' "$DEPLOY_ENV" | base64 | tr -d '\n')"
+          echo "::add-mask::$encoded"
+          printf 'DEPLOY_ENV_B64=%s\n' "$encoded" >> "$GITHUB_ENV"
+
       - name: Deploy to world.tashan.chat
         uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0
         env:
           REPO: ${{ github.repository }}
           TARGET_SHA: ${{ github.sha }}
+          DEPLOY_ENV_B64: ${{ env.DEPLOY_ENV_B64 }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.DEPLOY_PORT || '22' }}
-          envs: REPO,TARGET_SHA
+          envs: REPO,TARGET_SHA,DEPLOY_ENV_B64
           timeout: 30m
           command_timeout: 30m
-          script_stop: true
           script: |
             set -Eeuo pipefail
             base_dir="${{ secrets.DEPLOY_PATH || '/var/www/github-actions/repos' }}"
@@ -62,5 +76,25 @@ jobs:
             git fetch --prune origin main
             previous_sha="$(sed -n '1p' .deploy/current-sha 2>/dev/null || true)"
             git checkout --detach "$TARGET_SHA"
+
+            umask 077
+            env_file="$(mktemp "$repo_dir/.env.deploy.XXXXXX")"
+            trap 'rm -f "$env_file"' EXIT
+            printf '%s' "$DEPLOY_ENV_B64" | base64 --decode > "$env_file"
+
+            for key in \
+              LLM_API_URL LLM_API_KEY LLM_MODEL ADMIN_TOKEN \
+              FEISHU_APP_ID FEISHU_APP_SECRET FEISHU_APP_TOKEN \
+              FEISHU_CASE_TABLE_ID FEISHU_REPORT_TABLE_ID; do
+              if ! grep -qE "^${key}=.+" "$env_file"; then
+                echo "Required production setting ${key} is missing from DEPLOY_ENV." >&2
+                exit 1
+              fi
+            done
+
+            chmod 600 "$env_file"
+            mv "$env_file" .env
+            trap - EXIT
+
             chmod +x scripts/deploy.sh
             scripts/deploy.sh "$previous_sha" "$TARGET_SHA"
