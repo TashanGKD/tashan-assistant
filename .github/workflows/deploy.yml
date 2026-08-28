@@ -52,12 +52,13 @@ jobs:
           TARGET_SHA: ${{ github.sha }}
           DEPLOY_ENV_B64: ${{ env.DEPLOY_ENV_B64 }}
           DEPLOY_REQUIRE_FEISHU: "0"
+          FEISHU_ENV: ${{ secrets.FEISHU_ENV }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.DEPLOY_PORT || '22' }}
-          envs: REPO,TARGET_SHA,DEPLOY_ENV_B64,DEPLOY_REQUIRE_FEISHU
+          envs: REPO,TARGET_SHA,DEPLOY_ENV_B64,DEPLOY_REQUIRE_FEISHU,FEISHU_ENV
           timeout: 30m
           command_timeout: 30m
           script: |
@@ -82,6 +83,11 @@ jobs:
             env_file="$(mktemp "$repo_dir/.env.deploy.XXXXXX")"
             trap 'rm -f "$env_file"' EXIT
             printf '%s' "$DEPLOY_ENV_B64" | base64 --decode > "$env_file"
+            # 合并飞书配置：剔除 DEPLOY_ENV 中的 FEISHU_ 空占位，再追加 FEISHU_ENV 的真实值
+            grep -vE '^FEISHU_' "$env_file" > "$env_file.tmp" && mv "$env_file.tmp" "$env_file"
+            if [ -n "${FEISHU_ENV:-}" ]; then
+              printf '\n%s\n' "$FEISHU_ENV" >> "$env_file"
+            fi
 
             for key in LLM_API_URL LLM_API_KEY LLM_MODEL ADMIN_TOKEN; do
               if ! grep -qE "^${key}=.+" "$env_file"; then
