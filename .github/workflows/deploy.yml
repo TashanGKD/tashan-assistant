@@ -51,12 +51,13 @@ jobs:
           REPO: ${{ github.repository }}
           TARGET_SHA: ${{ github.sha }}
           DEPLOY_ENV_B64: ${{ env.DEPLOY_ENV_B64 }}
+          DEPLOY_REQUIRE_FEISHU: "0"
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.DEPLOY_PORT || '22' }}
-          envs: REPO,TARGET_SHA,DEPLOY_ENV_B64
+          envs: REPO,TARGET_SHA,DEPLOY_ENV_B64,DEPLOY_REQUIRE_FEISHU
           timeout: 30m
           command_timeout: 30m
           script: |
@@ -82,10 +83,7 @@ jobs:
             trap 'rm -f "$env_file"' EXIT
             printf '%s' "$DEPLOY_ENV_B64" | base64 --decode > "$env_file"
 
-            for key in \
-              LLM_API_URL LLM_API_KEY LLM_MODEL ADMIN_TOKEN \
-              FEISHU_APP_ID FEISHU_APP_SECRET FEISHU_APP_TOKEN \
-              FEISHU_CASE_TABLE_ID FEISHU_REPORT_TABLE_ID; do
+            for key in LLM_API_URL LLM_API_KEY LLM_MODEL ADMIN_TOKEN; do
               if ! grep -qE "^${key}=.+" "$env_file"; then
                 echo "Required production setting ${key} is missing from DEPLOY_ENV." >&2
                 exit 1
